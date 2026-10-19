@@ -6,6 +6,40 @@
   "engines": { "vscode": "^1.80.0" },
   "main": "./out/extension.js",
   "activationEvents": ["onLanguage:markdown"],
+  "contributes": {
+    "configuration": {
+      "title": "Markdown Live Preview",
+      "properties": {
+        "mdLivePreview.heading": {
+          "type": "object",
+          "markdownDescription": "各级标题（h1–h6）的样式。键为 h1..h6，值形如 `{ \"color\": \"#569CD6\", \"bold\": true, \"italic\": false }`；`color` 留空字符串表示不设颜色。",
+          "default": {
+            "h1": { "color": "#569CD6", "bold": true, "italic": false },
+            "h2": { "color": "#4EC9B0", "bold": true, "italic": false },
+            "h3": { "color": "#DCDCAA", "bold": true, "italic": false },
+            "h4": { "color": "#C586C0", "bold": true, "italic": false },
+            "h5": { "color": "#CE9178", "bold": true, "italic": false },
+            "h6": { "color": "#9CDCFE", "bold": true, "italic": false }
+          }
+        },
+        "mdLivePreview.codeBlock.background": {
+          "type": "string",
+          "markdownDescription": "围栏代码块的整行背景色（CSS 颜色）。",
+          "default": "rgba(128, 128, 128, 0.18)"
+        },
+        "mdLivePreview.codeInline.background": {
+          "type": "string",
+          "markdownDescription": "行内代码 `` `code` `` 的背景色（CSS 颜色）。",
+          "default": "rgba(128, 128, 128, 0.24)"
+        },
+        "mdLivePreview.quote.background": {
+          "type": "string",
+          "markdownDescription": "引用块（`>` 开头）的整行背景色（CSS 颜色）。",
+          "default": "rgba(128, 128, 128, 0.12)"
+        }
+      }
+    }
+  },
   "scripts": {
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./"

@@ -1,0 +1,15 @@
+﻿.vscode/**
+.github/**
+src/**
+script/**
+old/**
+doc/**
+dist/**
+.vscodeignore
+.gitignore
+.mcp.json
+tsconfig.json
+package-lock.json
+**/*.ts
+**/*.map
+*.vsix

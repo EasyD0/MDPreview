@@ -1,3 +1,8 @@
 # Added by code-review-graph
 .code-review-graph/
 old/*
+# 构建产物
+node_modules/
+out/
+dist/
+*.vsix
