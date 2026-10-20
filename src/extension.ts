@@ -13,7 +13,7 @@ function refresh(): void {
     return;
   }
   for (const editor of vscode.window.visibleTextEditors) {
-    renderPreview(editor, decorationTypes);
+    renderPreview(editor, decorationTypes, previewConfig);
   }
 }
 

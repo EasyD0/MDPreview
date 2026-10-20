@@ -12,30 +12,35 @@
       "properties": {
         "mdLivePreview.heading": {
           "type": "object",
-          "markdownDescription": "各级标题（h1–h6）的样式。键为 h1..h6，值形如 `{ \"color\": \"#569CD6\", \"bold\": true, \"italic\": false }`；`color` 留空字符串表示不设颜色。",
+          "markdownDescription": "各级标题（h1–h6）的样式。键为 `h1`..`h6`，可用字段：`color`（文本颜色）、`backgroundColor`（背景色）、`bold`、`italic`。颜色留空字符串表示沿用主题默认值。",
           "default": {
-            "h1": { "color": "#569CD6", "bold": true, "italic": false },
-            "h2": { "color": "#4EC9B0", "bold": true, "italic": false },
-            "h3": { "color": "#DCDCAA", "bold": true, "italic": false },
-            "h4": { "color": "#C586C0", "bold": true, "italic": false },
-            "h5": { "color": "#CE9178", "bold": true, "italic": false },
-            "h6": { "color": "#9CDCFE", "bold": true, "italic": false }
+            "h1": { "color": "#569CD6", "backgroundColor": "", "bold": true, "italic": false },
+            "h2": { "color": "#4EC9B0", "backgroundColor": "", "bold": true, "italic": false },
+            "h3": { "color": "#DCDCAA", "backgroundColor": "", "bold": true, "italic": false },
+            "h4": { "color": "#C586C0", "backgroundColor": "", "bold": true, "italic": false },
+            "h5": { "color": "#CE9178", "backgroundColor": "", "bold": true, "italic": false },
+            "h6": { "color": "#9CDCFE", "backgroundColor": "", "bold": true, "italic": false }
           }
         },
-        "mdLivePreview.codeBlock.background": {
-          "type": "string",
-          "markdownDescription": "围栏代码块的整行背景色（CSS 颜色）。",
-          "default": "rgba(128, 128, 128, 0.18)"
+        "mdLivePreview.body": {
+          "type": "object",
+          "markdownDescription": "正文文本的样式（不含标题、代码、引用）。可用字段：`color`、`bold`、`italic`。",
+          "default": { "color": "", "bold": false, "italic": false }
         },
-        "mdLivePreview.codeInline.background": {
-          "type": "string",
-          "markdownDescription": "行内代码 `` `code` `` 的背景色（CSS 颜色）。",
-          "default": "rgba(128, 128, 128, 0.24)"
+        "mdLivePreview.codeInline": {
+          "type": "object",
+          "markdownDescription": "行内代码的样式。可用字段：`color`、`backgroundColor`、`bold`、`italic`。",
+          "default": { "color": "", "backgroundColor": "rgba(128, 128, 128, 0.24)", "bold": false, "italic": false }
         },
-        "mdLivePreview.quote.background": {
-          "type": "string",
-          "markdownDescription": "引用块（`>` 开头）的整行背景色（CSS 颜色）。",
-          "default": "rgba(128, 128, 128, 0.12)"
+        "mdLivePreview.codeBlock": {
+          "type": "object",
+          "markdownDescription": "围栏代码块的样式。目前只使用 `backgroundColor`（整行背景）。",
+          "default": { "backgroundColor": "rgba(128, 128, 128, 0.18)" }
+        },
+        "mdLivePreview.quote": {
+          "type": "object",
+          "markdownDescription": "引用块的样式。可用字段：`color`、`backgroundColor`。",
+          "default": { "color": "", "backgroundColor": "rgba(128, 128, 128, 0.12)" }
         }
       }
     }

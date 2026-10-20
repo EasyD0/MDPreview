@@ -1,14 +1,20 @@
 import * as vscode from 'vscode';
-import type { PreviewConfig } from './config';
+import type { PreviewConfig, TextStyle } from './config';
 
 /** 一组 decoration 类型。配置变化时整体重建，所以需要显式 dispose。 */
 export interface DecorationTypes {
   hidden: vscode.TextEditorDecorationType;
+  /** 围栏行内容：保留行高，把文字涂透明。 */
+  fenceHidden: vscode.TextEditorDecorationType;
+  /** 围栏行首的 [copy] 提示。 */
+  copyHint: vscode.TextEditorDecorationType;
   bold: vscode.TextEditorDecorationType;
   italic: vscode.TextEditorDecorationType;
   boldItalic: vscode.TextEditorDecorationType;
   /** 下标 0 对应 h1，下标 5 对应 h6。 */
   headings: vscode.TextEditorDecorationType[];
+  /** 正文：标题、代码、引用之外的部分。 */
+  body: vscode.TextEditorDecorationType;
   codeBlock: vscode.TextEditorDecorationType;
   codeInline: vscode.TextEditorDecorationType;
   quote: vscode.TextEditorDecorationType;
@@ -25,10 +31,13 @@ export interface InlineToken {
 
 interface Buckets {
   hidden: vscode.Range[];
+  fenceHidden: vscode.Range[];
+  copyHint: vscode.Range[];
   bold: vscode.Range[];
   italic: vscode.Range[];
   boldItalic: vscode.Range[];
   headings: vscode.Range[][];
+  body: vscode.Range[];
   codeBlock: vscode.Range[];
   codeInline: vscode.Range[];
   quote: vscode.Range[];
@@ -43,42 +52,71 @@ const MAX_NESTING = 4;
 const WORD_CHAR = /[\p{L}\p{N}]/u;
 const SPACE = /\s/;
 
+/**
+ * 把 TextStyle 转成 decoration 选项。
+ * 空字符串表示「不设置」，交给编辑器主题；font 为 false 时不碰字重和字形，
+ * 避免把代码块、引用块里本来就有的粗体覆盖掉。
+ */
+function styleOptions(style: TextStyle, wholeLine: boolean, font: boolean): vscode.DecorationRenderOptions {
+  const options: vscode.DecorationRenderOptions = {};
+  if (wholeLine) {
+    options.isWholeLine = true;
+  }
+  if (style.color) {
+    options.color = style.color;
+  }
+  if (style.backgroundColor) {
+    options.backgroundColor = style.backgroundColor;
+  }
+  if (font) {
+    options.fontWeight = style.bold ? 'bold' : 'normal';
+    options.fontStyle = style.italic ? 'italic' : 'normal';
+  }
+  return options;
+}
+
 export function createDecorationTypes(cfg: PreviewConfig): DecorationTypes {
-  const headings = cfg.headings.map(style => vscode.window.createTextEditorDecorationType({
-    color: style.color.length > 0 ? style.color : undefined,
-    fontWeight: style.bold ? 'bold' : 'normal',
-    fontStyle: style.italic ? 'italic' : 'normal',
-  }));
+  const headings = cfg.headings.map(style => vscode.window.createTextEditorDecorationType(
+    styleOptions(style, true, true),
+  ));
 
   return {
     // textDecoration 里塞 display:none 是 VS Code 的非官方用法：官方 API 没有隐藏文本的能力。
     hidden: vscode.window.createTextEditorDecorationType({ textDecoration: 'none; display: none;' }),
+    // 围栏行不能也用 display:none：before 内容可能和文本共用或嵌套同一个 span，会一起消失。
+    // 涂透明既保住了行高，也不影响 [copy] 的显示。
+    fenceHidden: vscode.window.createTextEditorDecorationType({
+      textDecoration: 'none; color: transparent !important;',
+    }),
+    copyHint: vscode.window.createTextEditorDecorationType({
+      before: {
+        contentText: '[copy]',
+        color: new vscode.ThemeColor('editorCodeLens.foreground'),
+        margin: '0 0.8em 0 0',
+      },
+    }),
     bold: vscode.window.createTextEditorDecorationType({ fontWeight: 'bold' }),
     italic: vscode.window.createTextEditorDecorationType({ fontStyle: 'italic' }),
     boldItalic: vscode.window.createTextEditorDecorationType({ fontWeight: 'bold', fontStyle: 'italic' }),
     headings,
-    codeBlock: vscode.window.createTextEditorDecorationType({
-      isWholeLine: true,
-      backgroundColor: cfg.codeBlockBackground,
-    }),
-    codeInline: vscode.window.createTextEditorDecorationType({
-      backgroundColor: cfg.codeInlineBackground,
-    }),
-    quote: vscode.window.createTextEditorDecorationType({
-      isWholeLine: true,
-      backgroundColor: cfg.quoteBackground,
-    }),
+    body: vscode.window.createTextEditorDecorationType(styleOptions(cfg.body, false, true)),
+    codeBlock: vscode.window.createTextEditorDecorationType(styleOptions(cfg.codeBlock, true, false)),
+    codeInline: vscode.window.createTextEditorDecorationType(styleOptions(cfg.codeInline, false, true)),
+    quote: vscode.window.createTextEditorDecorationType(styleOptions(cfg.quote, true, false)),
   };
 }
 
 export function disposeDecorationTypes(types: DecorationTypes): void {
   types.hidden.dispose();
+  types.fenceHidden.dispose();
+  types.copyHint.dispose();
   types.bold.dispose();
   types.italic.dispose();
   types.boldItalic.dispose();
   for (const heading of types.headings) {
     heading.dispose();
   }
+  types.body.dispose();
   types.codeBlock.dispose();
   types.codeInline.dispose();
   types.quote.dispose();
@@ -226,7 +264,7 @@ function isWordChar(ch: string): boolean {
  * 重算某个编辑器里的全部 decoration。
  * 光标（或选区）所在行显示源码，其余行的标记符被隐藏。
  */
-export function renderPreview(editor: vscode.TextEditor, types: DecorationTypes): void {
+export function renderPreview(editor: vscode.TextEditor, types: DecorationTypes, cfg: PreviewConfig): void {
   const doc = editor.document;
   if (doc.languageId !== 'markdown') {
     return;
@@ -234,6 +272,7 @@ export function renderPreview(editor: vscode.TextEditor, types: DecorationTypes)
 
   const activeLines = collectActiveLines(editor);
   const buckets = createBuckets();
+  const bodyEnabled = cfg.body.color !== '' || cfg.body.bold || cfg.body.italic;
   let fence: FenceState | undefined;
 
   for (let line = 0; line < doc.lineCount; line++) {
@@ -244,7 +283,12 @@ export function renderPreview(editor: vscode.TextEditor, types: DecorationTypes)
     // 围栏代码块：整块加背景，块内不做行内解析
     if (fence) {
       buckets.codeBlock.push(range(line, 0, text.length));
-      if (fenceMatch && fenceMatch[1][0] === fence.char && fenceMatch[1].length >= fence.length) {
+      // 只有闭合围栏那一行才隐藏，块内代码必须原样显示
+      const closes = fenceMatch !== null
+        && fenceMatch[1][0] === fence.char
+        && fenceMatch[1].length >= fence.length;
+      if (closes) {
+        hideFenceLine(buckets, line, text, showSource, false);
         fence = undefined;
       }
       continue;
@@ -252,15 +296,21 @@ export function renderPreview(editor: vscode.TextEditor, types: DecorationTypes)
     if (fenceMatch) {
       fence = { char: fenceMatch[1][0], length: fenceMatch[1].length };
       buckets.codeBlock.push(range(line, 0, text.length));
+      hideFenceLine(buckets, line, text, showSource, true);
       continue;
     }
 
+    // 正文样式要避开标题 / 代码 / 引用，先收集本行已被占用的区间
+    const occupied: Array<[number, number]> = [];
+
     if (/^\s{0,3}>/.test(text)) {
       buckets.quote.push(range(line, 0, text.length));
+      occupied.push([0, text.length]);
     }
 
     const heading = /^(#{1,6})([ \t]+)(.*)$/.exec(text);
     if (heading) {
+      occupied.push([0, text.length]);
       const contentFrom = heading[1].length + heading[2].length;
       let contentTo = text.length;
       const closing = /[ \t]+#+[ \t]*$/.exec(text);
@@ -293,17 +343,75 @@ export function renderPreview(editor: vscode.TextEditor, types: DecorationTypes)
         buckets.hidden.push(range(line, token.openStart, token.openEnd));
         buckets.hidden.push(range(line, token.closeStart, token.closeEnd));
       }
+      occupied.push([token.openStart, token.closeEnd]);
+    }
+
+    if (bodyEnabled) {
+      for (const bodyRange of bodyRanges(line, text.length, occupied)) {
+        buckets.body.push(bodyRange);
+      }
     }
   }
 
   applyBuckets(editor, types, buckets);
 }
 
+/**
+ * 围栏行：隐藏三个反引号和语言，行本身保留（行号也还在），看起来是一条空行。
+ * 起始围栏额外渲染 [copy]。光标落在该行时按既有规则显示源码，两者都不加。
+ */
+function hideFenceLine(
+  buckets: Buckets,
+  line: number,
+  text: string,
+  showSource: boolean,
+  isOpening: boolean,
+): void {
+  if (showSource) {
+    return;
+  }
+  const lineRange = range(line, 0, text.length);
+  buckets.fenceHidden.push(lineRange);
+  if (isOpening) {
+    buckets.copyHint.push(lineRange);
+  }
+}
+
+/**
+ * 从整行里减掉已被标题 / 代码 / 引用 / 行内标记占用的区间，得到正文样式的区间。
+ * 区间互不重叠，这样就不用依赖 decoration 之间的优先级。
+ */
+function bodyRanges(line: number, length: number, occupied: Array<[number, number]>): vscode.Range[] {
+  if (length <= 0) {
+    return [];
+  }
+  const sorted = occupied.slice().sort((a, b) => a[0] - b[0]);
+  const result: vscode.Range[] = [];
+  let cursor = 0;
+  for (const [start, end] of sorted) {
+    const from = Math.max(0, start);
+    const to = Math.min(length, end);
+    if (from > cursor) {
+      result.push(range(line, cursor, from));
+    }
+    if (to > cursor) {
+      cursor = to;
+    }
+  }
+  if (cursor < length) {
+    result.push(range(line, cursor, length));
+  }
+  return result;
+}
+
 function applyBuckets(editor: vscode.TextEditor, types: DecorationTypes, buckets: Buckets): void {
   editor.setDecorations(types.hidden, buckets.hidden);
+  editor.setDecorations(types.fenceHidden, buckets.fenceHidden);
+  editor.setDecorations(types.copyHint, buckets.copyHint);
   editor.setDecorations(types.bold, buckets.bold);
   editor.setDecorations(types.italic, buckets.italic);
   editor.setDecorations(types.boldItalic, buckets.boldItalic);
+  editor.setDecorations(types.body, buckets.body);
   editor.setDecorations(types.codeBlock, buckets.codeBlock);
   editor.setDecorations(types.codeInline, buckets.codeInline);
   editor.setDecorations(types.quote, buckets.quote);
@@ -313,10 +421,13 @@ function applyBuckets(editor: vscode.TextEditor, types: DecorationTypes, buckets
 function createBuckets(): Buckets {
   return {
     hidden: [],
+    fenceHidden: [],
+    copyHint: [],
     bold: [],
     italic: [],
     boldItalic: [],
     headings: [[], [], [], [], [], []],
+    body: [],
     codeBlock: [],
     codeInline: [],
     quote: [],
