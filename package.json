@@ -3,44 +3,155 @@
   "displayName": "Markdown Live Preview (min)",
   "version": "0.0.1",
   "publisher": "local",
-  "engines": { "vscode": "^1.80.0" },
+  "engines": {
+    "vscode": "^1.80.0"
+  },
   "main": "./out/extension.js",
-  "activationEvents": ["onLanguage:markdown"],
+  "activationEvents": [
+    "onLanguage:markdown"
+  ],
   "contributes": {
+    "commands": [
+      {
+        "command": "mdLivePreview.copyCodeBlock",
+        "title": "复制代码块"
+      }
+    ],
     "configuration": {
       "title": "Markdown Live Preview",
       "properties": {
         "mdLivePreview.heading": {
           "type": "object",
-          "markdownDescription": "各级标题（h1–h6）的样式。键为 `h1`..`h6`，可用字段：`color`（文本颜色）、`backgroundColor`（背景色）、`bold`、`italic`。颜色留空字符串表示沿用主题默认值。",
+          "markdownDescription": "各级标题（h1–h6）的样式。键为 `h1`..`h6`，可用字段：`color`（文本颜色）、`backgroundColor`（背景色）、`bold`、`italic`、`underline`（下划线开关）、`border`（边框开关，整圈）、`fontFamily`（CSS 字体族，留空 = 编辑器字体）。可选调边框外观：`borderColor` / `borderWidth` / `borderStyle`。颜色留空字符串表示沿用主题默认值。",
           "default": {
-            "h1": { "color": "#569CD6", "backgroundColor": "", "bold": true, "italic": false },
-            "h2": { "color": "#4EC9B0", "backgroundColor": "", "bold": true, "italic": false },
-            "h3": { "color": "#DCDCAA", "backgroundColor": "", "bold": true, "italic": false },
-            "h4": { "color": "#C586C0", "backgroundColor": "", "bold": true, "italic": false },
-            "h5": { "color": "#CE9178", "backgroundColor": "", "bold": true, "italic": false },
-            "h6": { "color": "#9CDCFE", "backgroundColor": "", "bold": true, "italic": false }
+            "h1": {
+              "color": "#569CD6",
+              "backgroundColor": "",
+              "bold": true,
+              "italic": false,
+              "underline": true
+            },
+            "h2": {
+              "color": "#4EC9B0",
+              "backgroundColor": "",
+              "bold": true,
+              "italic": false,
+              "underline": true
+            },
+            "h3": {
+              "color": "#DCDCAA",
+              "backgroundColor": "",
+              "bold": true,
+              "italic": false,
+              "underline": true
+            },
+            "h4": {
+              "color": "#C586C0",
+              "backgroundColor": "",
+              "bold": true,
+              "italic": false,
+              "underline": true
+            },
+            "h5": {
+              "color": "#CE9178",
+              "backgroundColor": "",
+              "bold": true,
+              "italic": false,
+              "underline": true
+            },
+            "h6": {
+              "color": "#9CDCFE",
+              "backgroundColor": "",
+              "bold": true,
+              "italic": false,
+              "underline": true
+            }
+          }
+        },
+        "mdLivePreview.headingPrefix": {
+          "type": "object",
+          "markdownDescription": "标题行首的层级徽章。`enabled` 是否显示；`format` 是文本模板，`{level}` 会替换成 1..6（例如 `L{level}` 显示为 `L1`，也可写成 `H{level}` 或 `H{level} `）；`color`、`backgroundColor` 是徽章自身的配色，留空字符串表示沿用主题。",
+          "default": {
+            "enabled": true,
+            "format": "H{level}",
+            "color": "",
+            "backgroundColor": ""
+          }
+        },
+        "mdLivePreview.list": {
+          "type": "object",
+          "markdownDescription": "无序列表与任务列表。`bullet`：列表符号替换字符（默认 `•`，留空 = 不替换）；`bulletColor` 留空 = 跟随文本色。任务列表 `- [ ]` / `- [x]` 替换为 `todoUnchecked` / `todoChecked`（默认 `☐` / `☑`，任一留空 = 不替换）；`uncheckedColor` / `checkedColor` 两态颜色（留空 = 跟随文本色）；`todoScale` 复选框放大倍数（字形偏小，默认 1.3，1 = 不放大）。",
+          "default": {
+            "bullet": "●",
+            "bulletColor": "",
+            "todoUnchecked": "☐",
+            "todoChecked": "☑",
+            "uncheckedColor": "",
+            "checkedColor": "",
+            "todoScale": "1.3"
+          }
+        },
+        "mdLivePreview.thematicBreak": {
+          "type": "object",
+          "markdownDescription": "`---` / `***` / `___` 分隔线。非光标行隐藏标记并在整行画一条 `color` 颜色的下边框线；`color` 留空 = 保留原始文本。`width` / `style` 为 CSS 线宽与线型。",
+          "default": {
+            "color": "rgba(128, 128, 128, 0.6)",
+            "width": "1px",
+            "style": "solid"
+          }
+        },
+        "mdLivePreview.bold": {
+          "type": "object",
+          "markdownDescription": "粗体文本。主题通常给 **粗体** 单独上色；`color` 用来自定义覆盖色，默认取正文前景色（只变粗细不变色），留空字符串 = 沿用主题上色。",
+          "default": {
+            "color": "var(--vscode-editor-foreground, #d4d4d4)"
+          }
+        },
+        "mdLivePreview.languageLabel": {
+          "type": "object",
+          "markdownDescription": "代码块语言标签：在隐藏后的起始围栏行行首插入语言名角标（如 `js`）。`enabled` 开关；`color` 留空 = 使用主题的 CodeLens 前景色。无语言的围栏（纯 ```）不显示标签。",
+          "default": {
+            "enabled": true,
+            "color": ""
           }
         },
         "mdLivePreview.body": {
           "type": "object",
-          "markdownDescription": "正文文本的样式（不含标题、代码、引用）。可用字段：`color`、`bold`、`italic`。",
-          "default": { "color": "", "bold": false, "italic": false }
+          "markdownDescription": "正文文本的样式（不含标题、代码、引用）。可用字段：`color`、`bold`、`italic`、`underline`、`border`（及 `borderColor` / `borderWidth` / `borderStyle`）、`fontFamily`。",
+          "default": {
+            "color": "",
+            "bold": false,
+            "italic": false
+          }
         },
         "mdLivePreview.codeInline": {
           "type": "object",
-          "markdownDescription": "行内代码的样式。可用字段：`color`、`backgroundColor`、`bold`、`italic`。",
-          "default": { "color": "", "backgroundColor": "rgba(128, 128, 128, 0.24)", "bold": false, "italic": false }
+          "markdownDescription": "行内代码的样式。可用字段：`color`、`backgroundColor`、`bold`、`italic`、`underline`、`border`（及 `borderColor` / `borderWidth` / `borderStyle`）、`fontFamily`（想单独换代码字体就配在这里，如 `Cascadia Code, monospace`）。",
+          "default": {
+            "color": "#DCDCAA",
+            "backgroundColor": "rgb(60, 60, 60)",
+            "bold": true,
+            "italic": false
+          }
         },
         "mdLivePreview.codeBlock": {
           "type": "object",
-          "markdownDescription": "围栏代码块的样式。目前只使用 `backgroundColor`（整行背景）。",
-          "default": { "backgroundColor": "rgba(128, 128, 128, 0.18)" }
+          "markdownDescription": "围栏代码块的样式。使用 `backgroundColor`（整行背景）与 `border`（整圈边框；逐行自动拼接成完整矩形，首/中/末行分别处理）。可再配 `borderColor` / `borderStyle`、`underline` 与 `fontFamily`；`borderWidth` 只取第一个值作为线宽。",
+          "default": {
+            "backgroundColor": "rgba(128, 128, 128, 0.18)",
+            "border": true
+          }
         },
         "mdLivePreview.quote": {
           "type": "object",
-          "markdownDescription": "引用块的样式。可用字段：`color`、`backgroundColor`。",
-          "default": { "color": "", "backgroundColor": "rgba(128, 128, 128, 0.12)" }
+          "markdownDescription": "引用块的样式。可用字段：`color`、`backgroundColor`、`underline`；边框：`border`（显式开关，不写时看 borderColor）、`borderColor`（留空 = 无边框）、`borderWidth`（CSS 多值，默认 `0 0 0 4px` 即只有左侧竖条，改成 `1px` 就是整框）、`borderStyle`（默认 `solid`）。",
+          "default": {
+            "color": "",
+            "backgroundColor": "rgba(128, 128, 128, 0.12)",
+            "borderColor": "rgba(128, 128, 128, 0.55)",
+            "borderWidth": "0 0 0 4px",
+            "borderStyle": "solid"
+          }
         }
       }
     }
