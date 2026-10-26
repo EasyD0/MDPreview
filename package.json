@@ -3,6 +3,7 @@
   "displayName": "Markdown Live Preview (better)",
   "version": "0.0.1",
   "publisher": "ace-MS-is-shit",
+  "license": "MIT",
   "engines": {
     "vscode": "^1.80.0"
   },
