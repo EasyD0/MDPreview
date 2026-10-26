@@ -1,5 +1,7 @@
 # Markdown Live Preview (better)
 
+[English](README.en.md) | 简体中文
+
 在 VS Code 编辑区里直接渲染 Markdown 的实时预览扩展。不用切换到侧边预览，正在编辑的 `.md` 文件本身就是渲染后的样子，同时保留代码补全、多光标、搜索等原生编辑能力。
 
 GitHub 仓库地址：<https://github.com/EasyD0/MDPreview.git>
