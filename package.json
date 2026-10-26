@@ -1,8 +1,8 @@
 {
-  "name": "md-live-preview-min",
-  "displayName": "Markdown Live Preview (min)",
+  "name": "better-md-live-preview",
+  "displayName": "Markdown Live Preview (better)",
   "version": "0.0.1",
-  "publisher": "local",
+  "publisher": "ace-MS-is-shit",
   "engines": {
     "vscode": "^1.80.0"
   },
